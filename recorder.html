@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audio Recorder</title>
+</head>
+<body>
+  <button id="recordButton">🎙️ Grabar</button>
+  <button id="stopButton" disabled>⏹️ Detener</button>
+  <p id="status">Presiona "Grabar" para empezar.</p>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = event => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    reader.onloadend = () => {
+        const base64Audio = reader.result.split(',')[1];
+        window.parent.postMessage({ type: 'audio', data: base64Audio }, '*');
+        console.log("Audio enviado:", base64Audio.substring(0, 50)); // Depuración en consola
+    };
+    audioChunks = [];
+};
+
+        document.getElementById('recordButton').addEventListener('click', () => {
+          audioChunks = [];
+          mediaRecorder.start();
+          document.getElementById('status').innerText = 'Grabando...';
+          document.getElementById('recordButton').disabled = true;
+          document.getElementById('stopButton').disabled = false;
+        });
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+          mediaRecorder.stop();
+          document.getElementById('status').innerText = 'Procesando...';
+          document.getElementById('recordButton').disabled = false;
+          document.getElementById('stopButton').disabled = true;
+        });
+      })
+      .catch(err => {
+        document.getElementById('status').innerText = 'Error al acceder al micrófono: ' + err;
+      });
+  </script>
+</body>
+</html>
